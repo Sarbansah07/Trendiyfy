@@ -311,11 +311,18 @@ app.post('/api/contact', contactLimiter, (req, res) => {
 });
 
 app.use(authenticateToken);
-app.use(express.static('.', {
+
+// Serve static files from the root directory
+app.use(express.static(path.join(__dirname), {
   setHeaders: (res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   }
 }));
+
+// Catch all handler: send back index.html for any non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.listen(PORT, HOST, () => {
   console.log(`Trendyfy server running at http://${HOST}:${PORT}/`);
