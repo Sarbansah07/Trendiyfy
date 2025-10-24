@@ -6,8 +6,83 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const db = require('./database');
 const path = require('path');
+
+// Sample products data for demo (since SQLite may not work on Render)
+const products = [
+  {
+    id: 1,
+    name: 'Cartoon Astronaut T-Shirts',
+    price: 78,
+    image: 'img/products/f1.jpg',
+    is_featured: 1,
+    stock_qty: 10,
+    created_at: '2024-01-01T00:00:00.000Z'
+  },
+  {
+    id: 2,
+    name: 'Cartoon Astronaut T-Shirts',
+    price: 78,
+    image: 'img/products/f2.jpg',
+    is_featured: 1,
+    stock_qty: 10,
+    created_at: '2024-01-01T00:00:00.000Z'
+  },
+  {
+    id: 3,
+    name: 'Cartoon Astronaut T-Shirts',
+    price: 78,
+    image: 'img/products/f3.jpg',
+    is_featured: 1,
+    stock_qty: 10,
+    created_at: '2024-01-01T00:00:00.000Z'
+  },
+  {
+    id: 4,
+    name: 'Cartoon Astronaut T-Shirts',
+    price: 78,
+    image: 'img/products/f4.jpg',
+    is_featured: 1,
+    stock_qty: 10,
+    created_at: '2024-01-01T00:00:00.000Z'
+  },
+  {
+    id: 5,
+    name: 'Cartoon Astronaut T-Shirts',
+    price: 78,
+    image: 'img/products/n1.jpg',
+    is_featured: 0,
+    stock_qty: 10,
+    created_at: '2024-01-01T00:00:00.000Z'
+  },
+  {
+    id: 6,
+    name: 'Cartoon Astronaut T-Shirts',
+    price: 78,
+    image: 'img/products/n2.jpg',
+    is_featured: 0,
+    stock_qty: 10,
+    created_at: '2024-01-01T00:00:00.000Z'
+  },
+  {
+    id: 7,
+    name: 'Cartoon Astronaut T-Shirts',
+    price: 78,
+    image: 'img/products/n3.jpg',
+    is_featured: 0,
+    stock_qty: 10,
+    created_at: '2024-01-01T00:00:00.000Z'
+  },
+  {
+    id: 8,
+    name: 'Cartoon Astronaut T-Shirts',
+    price: 78,
+    image: 'img/products/n4.jpg',
+    is_featured: 0,
+    stock_qty: 10,
+    created_at: '2024-01-01T00:00:00.000Z'
+  }
+];
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -153,7 +228,6 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 
 app.get('/api/products', (req, res) => {
   try {
-    const products = db.prepare('SELECT * FROM products ORDER BY created_at DESC').all();
     res.json(products);
   } catch (error) {
     console.error('Get products error:', error);
@@ -163,8 +237,8 @@ app.get('/api/products', (req, res) => {
 
 app.get('/api/products/featured', (req, res) => {
   try {
-    const products = db.prepare('SELECT * FROM products WHERE is_featured = 1').all();
-    res.json(products);
+    const featuredProducts = products.filter(p => p.is_featured === 1);
+    res.json(featuredProducts);
   } catch (error) {
     console.error('Get featured products error:', error);
     res.status(500).json({ error: 'Server error fetching featured products' });
@@ -173,7 +247,7 @@ app.get('/api/products/featured', (req, res) => {
 
 app.get('/api/products/:id', (req, res) => {
   try {
-    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    const product = products.find(p => p.id === parseInt(req.params.id));
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
@@ -184,16 +258,23 @@ app.get('/api/products/:id', (req, res) => {
   }
 });
 
+// In-memory cart storage for demo
+let cartItems = [];
+let nextCartItemId = 1;
+
 app.get('/api/cart', authenticateToken, requireAuth, (req, res) => {
   try {
-    const cartItems = db.prepare(`
-      SELECT ci.id, ci.quantity, p.* 
-      FROM cart_items ci 
-      JOIN products p ON ci.product_id = p.id 
-      WHERE ci.user_id = ?
-    `).all(req.user.id);
-    
-    res.json(cartItems);
+    const userCartItems = cartItems.filter(item => item.user_id === req.user.id);
+    const cartWithProducts = userCartItems.map(item => {
+      const product = products.find(p => p.id === item.product_id);
+      return {
+        id: item.id,
+        quantity: item.quantity,
+        ...product
+      };
+    });
+
+    res.json(cartWithProducts);
   } catch (error) {
     console.error('Get cart error:', error);
     res.status(500).json({ error: 'Server error fetching cart' });
@@ -208,7 +289,7 @@ app.post('/api/cart', authenticateToken, requireAuth, (req, res) => {
   }
 
   try {
-    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
+    const product = products.find(p => p.id === parseInt(productId));
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
@@ -217,17 +298,23 @@ app.post('/api/cart', authenticateToken, requireAuth, (req, res) => {
       return res.status(400).json({ error: 'Insufficient stock' });
     }
 
-    const existing = db.prepare('SELECT * FROM cart_items WHERE user_id = ? AND product_id = ?').get(req.user.id, productId);
+    const existing = cartItems.find(item => item.user_id === req.user.id && item.product_id === parseInt(productId));
 
     if (existing) {
       const newQuantity = existing.quantity + quantity;
       if (product.stock_qty < newQuantity) {
         return res.status(400).json({ error: 'Insufficient stock' });
       }
-      db.prepare('UPDATE cart_items SET quantity = ? WHERE id = ?').run(newQuantity, existing.id);
+      existing.quantity = newQuantity;
       res.json({ success: true, message: 'Cart updated', quantity: newQuantity });
     } else {
-      db.prepare('INSERT INTO cart_items (user_id, product_id, quantity) VALUES (?, ?, ?)').run(req.user.id, productId, quantity);
+      const cartItem = {
+        id: nextCartItemId++,
+        user_id: req.user.id,
+        product_id: parseInt(productId),
+        quantity
+      };
+      cartItems.push(cartItem);
       res.json({ success: true, message: 'Added to cart', quantity });
     }
   } catch (error) {
@@ -244,18 +331,18 @@ app.patch('/api/cart/:itemId', authenticateToken, requireAuth, (req, res) => {
   }
 
   try {
-    const cartItem = db.prepare('SELECT * FROM cart_items WHERE id = ? AND user_id = ?').get(req.params.itemId, req.user.id);
-    
+    const cartItem = cartItems.find(item => item.id === parseInt(req.params.itemId) && item.user_id === req.user.id);
+
     if (!cartItem) {
       return res.status(404).json({ error: 'Cart item not found' });
     }
 
-    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(cartItem.product_id);
+    const product = products.find(p => p.id === cartItem.product_id);
     if (product.stock_qty < quantity) {
       return res.status(400).json({ error: 'Insufficient stock' });
     }
 
-    db.prepare('UPDATE cart_items SET quantity = ? WHERE id = ?').run(quantity, req.params.itemId);
+    cartItem.quantity = quantity;
     res.json({ success: true });
   } catch (error) {
     console.error('Update cart error:', error);
@@ -265,7 +352,11 @@ app.patch('/api/cart/:itemId', authenticateToken, requireAuth, (req, res) => {
 
 app.delete('/api/cart/:itemId', authenticateToken, requireAuth, (req, res) => {
   try {
-    db.prepare('DELETE FROM cart_items WHERE id = ? AND user_id = ?').run(req.params.itemId, req.user.id);
+    const index = cartItems.findIndex(item => item.id === parseInt(req.params.itemId) && item.user_id === req.user.id);
+    if (index === -1) {
+      return res.status(404).json({ error: 'Cart item not found' });
+    }
+    cartItems.splice(index, 1);
     res.json({ success: true });
   } catch (error) {
     console.error('Delete cart item error:', error);
@@ -279,13 +370,18 @@ app.get('/api/cart/count', authenticateToken, (req, res) => {
   }
 
   try {
-    const result = db.prepare('SELECT SUM(quantity) as count FROM cart_items WHERE user_id = ?').get(req.user.id);
-    res.json({ count: result.count || 0 });
+    const userCartItems = cartItems.filter(item => item.user_id === req.user.id);
+    const totalCount = userCartItems.reduce((sum, item) => sum + item.quantity, 0);
+    res.json({ count: totalCount });
   } catch (error) {
     console.error('Get cart count error:', error);
     res.json({ count: 0 });
   }
 });
+
+// In-memory contact storage for demo
+let contactInquiries = [];
+let nextContactId = 1;
 
 app.post('/api/contact', contactLimiter, (req, res) => {
   const { name, email, subject, message } = req.body;
@@ -301,8 +397,17 @@ app.post('/api/contact', contactLimiter, (req, res) => {
 
   try {
     const userId = req.user ? req.user.id : null;
-    db.prepare('INSERT INTO contact_inquiries (user_id, name, email, subject, message) VALUES (?, ?, ?, ?, ?)').run(userId, name, email, subject || '', message);
-    
+    const inquiry = {
+      id: nextContactId++,
+      user_id: userId,
+      name,
+      email,
+      subject: subject || '',
+      message,
+      created_at: new Date().toISOString()
+    };
+    contactInquiries.push(inquiry);
+
     res.json({ success: true, message: 'Thank you for contacting us! We will get back to you soon.' });
   } catch (error) {
     console.error('Contact form error:', error);
