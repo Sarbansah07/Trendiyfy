@@ -143,6 +143,10 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// In-memory users storage for demo
+let users = [];
+let nextUserId = 1;
+
 app.post('/api/auth/signup', authLimiter, (req, res) => {
   const { email, password, name } = req.body;
 
@@ -155,24 +159,31 @@ app.post('/api/auth/signup', authLimiter, (req, res) => {
   }
 
   try {
-    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    
+    const existingUser = users.find(u => u.email === email);
+
     if (existingUser) {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
     const passwordHash = bcrypt.hashSync(password, 10);
-    const result = db.prepare('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)').run(email, passwordHash, name);
+    const user = {
+      id: nextUserId++,
+      email,
+      password_hash: passwordHash,
+      name,
+      created_at: new Date().toISOString()
+    };
+    users.push(user);
 
-    const token = jwt.sign({ id: result.lastInsertRowid, email, name }, JWT_SECRET, { expiresIn: '7d' });
-    
-    res.cookie('token', token, { 
-      httpOnly: true, 
+    const token = jwt.sign({ id: user.id, email, name }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.cookie('token', token, {
+      httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
       sameSite: 'lax'
     });
 
-    res.json({ success: true, user: { id: result.lastInsertRowid, email, name } });
+    res.json({ success: true, user: { id: user.id, email, name } });
   } catch (error) {
     console.error('Signup error:', error);
     res.status(500).json({ error: 'Server error during signup' });
@@ -187,7 +198,7 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
   }
 
   try {
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    const user = users.find(u => u.email === email);
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -200,9 +211,9 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
     }
 
     const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
-    
-    res.cookie('token', token, { 
-      httpOnly: true, 
+
+    res.cookie('token', token, {
+      httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
       sameSite: 'lax'
     });
