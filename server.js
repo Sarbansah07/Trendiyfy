@@ -10,8 +10,8 @@ const db = require('./database');
 const path = require('path');
 
 const app = express();
-const PORT = 5000;
-const HOST = 'localhost';
+const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
 const JWT_SECRET = process.env.JWT_SECRET || 'trendyfy-secret-key-change-in-production';
 
 app.set('trust proxy', 1);
