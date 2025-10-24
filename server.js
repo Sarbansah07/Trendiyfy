@@ -444,11 +444,4 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, HOST, () => {
-  console.log(`Trendyfy server running at http://${HOST}:${PORT}/`);
-  console.log('Backend APIs ready:');
-  console.log('  - Authentication: /api/auth/*');
-  console.log('  - Products: /api/products');
-  console.log('  - Cart: /api/cart');
-  console.log('  - Contact: /api/contact');
-});
+module.exports = app;
