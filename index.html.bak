@@ -73,7 +73,17 @@
         <h2>Featured Products</h2>
         <p>Summer Collection New Mordern Design</p>
         <div class="container" id="featured-products">
-            <p style="text-align: center; padding: 40px;">Loading products...</p>
+            <div class="pro">
+                <img src="img/about/products/f1.jpg">
+                <div class="des">
+                    <span>Trendyfy</span>
+                    <h5>Cartoon Tropical T-Shirt</h5>
+                    <div class="star">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
                     </div>
                     <h4>Rs 889</h4>
                 </div>
@@ -211,7 +221,17 @@
         <h2>New Arrivals</h2>
         <p>Summer Collection New Mordern Design</p>
         <div class="container" id="new-arrivals">
-            <p style="text-align: center; padding: 40px;">Loading products...</p>
+            <div class="pro">
+                <img src="img/about/products/n1.jpg">
+                <div class="des">
+                    <span>Trendyfy</span>
+                    <h5>Cartoon Tropical T-Shirt</h5>
+                    <div class="star">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
                     </div>
                     <h4>Rs 889</h4>
                 </div>

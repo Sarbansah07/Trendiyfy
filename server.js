@@ -14,6 +14,8 @@ const PORT = 5000;
 const HOST = '0.0.0.0';
 const JWT_SECRET = process.env.JWT_SECRET || 'trendyfy-secret-key-change-in-production';
 
+app.set('trust proxy', 1);
+
 app.use(helmet({
   contentSecurityPolicy: false
 }));
