@@ -47,32 +47,9 @@
                     <td>Subtotal</td>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="cart-items">
                 <tr>
-                    <td><a href="#"><i class="far fa-times-circle"></i></a></td>
-                    <td><img src="img/about/products/f1.jpg" alt=""></td>
-                    <td>Cartoon Astronaut T-Shirts</td>
-                    <td>Rs. 899</td>
-                    <td><input type="number" value="1"></td>
-                    <td>Rs. 100</td>
-                </tr>
-
-                <tr>
-                    <td><a href="#"><i class="far fa-times-circle"></i></a></td>
-                    <td><img src="img/about/products/f2.jpg" alt=""></td>
-                    <td>Cartoon Astronaut T-Shirts</td>
-                    <td>Rs. 899</td>
-                    <td><input type="number" value="1"></td>
-                    <td>Rs. 100</td>
-                </tr>
-
-                <tr>
-                    <td><a href="#"><i class="far fa-times-circle"></i></a></td>
-                    <td><img src="img/about/products/f3.jpg" alt=""></td>
-                    <td>Cartoon Astronaut T-Shirts</td>
-                    <td>Rs. 899</td>
-                    <td><input type="number" value="1"></td>
-                    <td>Rs. 100</td>
+                    <td colspan="6" style="text-align: center; padding: 40px;">Loading cart...</td>
                 </tr>
             </tbody>
         </table>
@@ -91,8 +68,8 @@
             <h3>Cart Total</h3>
             <table>
                 <tr>
-                    <td>CartSubtotal</td>
-                    <td>Rs. 899</td>
+                    <td>Cart Subtotal</td>
+                    <td id="subtotal-amount">Rs. 0</td>
                 </tr>
                 <tr>
                     <td>Delivery</td>
@@ -100,7 +77,7 @@
                 </tr>
                 <tr>
                     <td><strong>Total</strong></td>
-                    <td><strong>Rs. 899</strong></td>
+                    <td><strong id="total-amount">Rs. 0</strong></td>
                 </tr>
             </table>
             <button class="normal">Proceed to Checkout</button>
@@ -163,6 +140,129 @@
     </footer>
 
     <script src="javascript.js"></script>
+    <script src="cart-utils.js"></script>
+    <script>
+        let cartItems = [];
+
+        async function loadCart() {
+            try {
+                const user = await getCurrentUser();
+                
+                if (!user) {
+                    document.getElementById('cart-items').innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px;">
+                                Please <a href="/login/login.html" style="color: #088178; font-weight: 600;">login</a> to view your cart
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                const response = await fetch('/api/cart');
+                cartItems = await response.json();
+
+                if (cartItems.length === 0) {
+                    document.getElementById('cart-items').innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px;">
+                                Your cart is empty. <a href="/shop.html" style="color: #088178; font-weight: 600;">Start shopping!</a>
+                            </td>
+                        </tr>
+                    `;
+                    updateTotals();
+                    return;
+                }
+
+                renderCart();
+            } catch (error) {
+                console.error('Failed to load cart:', error);
+                document.getElementById('cart-items').innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px; color: #c33;">
+                            Failed to load cart. Please try again.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderCart() {
+            const tbody = document.getElementById('cart-items');
+            
+            tbody.innerHTML = cartItems.map(item => `
+                <tr>
+                    <td><a href="#" onclick="removeItem(${item.id}); return false;"><i class="far fa-times-circle"></i></a></td>
+                    <td><img src="${item.image_url}" alt="${item.name}"></td>
+                    <td>${item.name}</td>
+                    <td>Rs. ${(item.price / 100).toFixed(0)}</td>
+                    <td><input type="number" value="${item.quantity}" min="1" max="${item.stock_qty}" onchange="updateQuantity(${item.id}, this.value)"></td>
+                    <td>Rs. ${((item.price * item.quantity) / 100).toFixed(0)}</td>
+                </tr>
+            `).join('');
+
+            updateTotals();
+        }
+
+        function updateTotals() {
+            const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('subtotal-amount').textContent = `Rs. ${(subtotal / 100).toFixed(0)}`;
+            document.getElementById('total-amount').textContent = `Rs. ${(subtotal / 100).toFixed(0)}`;
+        }
+
+        async function updateQuantity(itemId, quantity) {
+            const qty = parseInt(quantity);
+            if (qty < 1) return;
+
+            try {
+                const response = await fetch(`/api/cart/${itemId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ quantity: qty })
+                });
+
+                if (response.ok) {
+                    const item = cartItems.find(i => i.id === itemId);
+                    if (item) {
+                        item.quantity = qty;
+                        renderCart();
+                        updateCartCount();
+                    }
+                } else {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to update quantity');
+                    loadCart();
+                }
+            } catch (error) {
+                alert('Network error. Please try again.');
+                loadCart();
+            }
+        }
+
+        async function removeItem(itemId) {
+            if (!confirm('Remove this item from cart?')) return;
+
+            try {
+                const response = await fetch(`/api/cart/${itemId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    cartItems = cartItems.filter(i => i.id !== itemId);
+                    renderCart();
+                    updateCartCount();
+                } else {
+                    alert('Failed to remove item');
+                }
+            } catch (error) {
+                alert('Network error. Please try again.');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadCart);
+    </script>
 </body>
 
 </html>

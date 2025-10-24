@@ -13,13 +13,13 @@
 
         <div>
             <ul id="nevbar" >
-                <li><a href="./login/login.html">Login</a></li>
+                <li class="auth-link"><a href="./login/login.html">Login</a></li>
                 <li><a class="active" href="index.html">Home</a></li>
                 <li><a href="shop.html">Shop</a></li>
                 <li><a href="blog.html">Blog</a></li>
                 <li><a href="about.html">About</a></li>
                 <li><a href="contact.html">Contact</a></li>
-                <li id="lg-bag"><a href="cart.html"><i class="fa-solid fa-cart-shopping"></i></a></li>
+                <li id="lg-bag"><a href="cart.html"><i class="fa-solid fa-cart-shopping"></i> <span class="cart-count" style="display:none;"></span></a></li>
                 <a href="#" id="close"><i lang="far fa-times"></i></a>
             </ul>
         </div>
@@ -72,7 +72,7 @@
     <section id="product1" class="section-p1">
         <h2>Featured Products</h2>
         <p>Summer Collection New Mordern Design</p>
-        <div class="container">
+        <div class="container" id="featured-products">
             <div class="pro">
                 <img src="img/about/products/f1.jpg">
                 <div class="des">
@@ -220,7 +220,7 @@
     <section id="product1" class="section-p1">
         <h2>New Arrivals</h2>
         <p>Summer Collection New Mordern Design</p>
-        <div class="container">
+        <div class="container" id="new-arrivals">
             <div class="pro">
                 <img src="img/about/products/n1.jpg">
                 <div class="des">
@@ -459,5 +459,72 @@
     </footer>
 
     <script src="javascript.js"></script>
+    <script src="cart-utils.js"></script>
+    <script>
+        async function loadFeaturedProducts() {
+            try {
+                const response = await fetch('/api/products/featured');
+                const products = await response.json();
+                const container = document.getElementById('featured-products');
+                
+                container.innerHTML = products.slice(0, 8).map((product, index) => `
+                    <div class="pro">
+                        <img src="${product.image_url}">
+                        <div class="des">
+                            <span>Trendyfy</span>
+                            <h5>${product.name}</h5>
+                            <div class="star">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <h4>Rs ${(product.price / 100).toFixed(0)}</h4>
+                        </div>
+                        <a href="#" onclick="addToCart(${product.id}); return false;"><i class="fas fa-shopping-cart cart"></i></a>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load products:', error);
+            }
+        }
+
+        async function loadNewArrivals() {
+            try {
+                const response = await fetch('/api/products');
+                const products = await response.json();
+                const container = document.getElementById('new-arrivals');
+                
+                const newProducts = products.filter(p => !p.is_featured).slice(0, 8);
+                
+                container.innerHTML = newProducts.map(product => `
+                    <div class="pro">
+                        <img src="${product.image_url}">
+                        <div class="des">
+                            <span>Trendyfy</span>
+                            <h5>${product.name}</h5>
+                            <div class="star">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <h4>Rs ${(product.price / 100).toFixed(0)}</h4>
+                        </div>
+                        <a href="#" onclick="addToCart(${product.id}); return false;"><i class="fas fa-shopping-cart cart"></i></a>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load new arrivals:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFeaturedProducts();
+            loadNewArrivals();
+        });
+    </script>
 </body>
 </html>

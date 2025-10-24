@@ -78,14 +78,15 @@
     </section>
 
     <section id="form-details">
-        <form action="">
+        <div id="message-status" style="padding: 15px; border-radius: 4px; margin: 0 auto 20px; max-width: 600px; display: none;"></div>
+        <form id="contact-form">
             <span>LEAVE A MESSAGE</span>
             <h2>We love to hear from you</h2>
-            <input type="text" placeholder="Your Name">
-            <input type="text" placeholder="E-mail">
-            <input type="text" placeholder="Subject">
-            <textarea name="" id="" cols="30" rows="10" placeholder="Your Message"></textarea>
-            <button class="normal">Submit</button>
+            <input type="text" id="contact-name" placeholder="Your Name" required>
+            <input type="email" id="contact-email" placeholder="E-mail" required>
+            <input type="text" id="contact-subject" placeholder="Subject">
+            <textarea id="contact-message" cols="30" rows="10" placeholder="Your Message" required></textarea>
+            <button class="normal" type="submit" id="submit-contact">Submit</button>
         </form>
     </section>
 
@@ -156,6 +157,60 @@
     </footer>
 
     <script src="javascript.js"></script>
+    <script>
+        const form = document.getElementById('contact-form');
+        const statusDiv = document.getElementById('message-status');
+        const submitBtn = document.getElementById('submit-contact');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('contact-name').value;
+            const email = document.getElementById('contact-email').value;
+            const subject = document.getElementById('contact-subject').value;
+            const message = document.getElementById('contact-message').value;
+
+            statusDiv.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
+
+            try {
+                const response = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, subject, message })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.style.backgroundColor = '#efe';
+                    statusDiv.style.color = '#3c3';
+                    statusDiv.style.border = '1px solid #cfc';
+                    statusDiv.textContent = data.message;
+                    statusDiv.style.display = 'block';
+                    form.reset();
+                } else {
+                    statusDiv.style.backgroundColor = '#fee';
+                    statusDiv.style.color = '#c33';
+                    statusDiv.style.border = '1px solid #fcc';
+                    statusDiv.textContent = data.error || 'Failed to send message';
+                    statusDiv.style.display = 'block';
+                }
+            } catch (error) {
+                statusDiv.style.backgroundColor = '#fee';
+                statusDiv.style.color = '#c33';
+                statusDiv.style.border = '1px solid #fcc';
+                statusDiv.textContent = 'Network error. Please try again.';
+                statusDiv.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit';
+            }
+        });
+    </script>
 </body>
 
 </html>
