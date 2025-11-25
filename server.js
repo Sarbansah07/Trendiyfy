@@ -436,8 +436,7 @@ app.use(express.static(path.join(__dirname), {
 app.use(authenticateToken);
 
 // Catch all handler: send back index.html for any non-API routes
-app.get/.*/ (req, res) => {
-  // Skip API routes
+app.get(/.*/,  (req, res) => {  // Skip API routes
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'API endpoint not found' });
   }
