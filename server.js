@@ -444,4 +444,13 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+  // Only listen if not being imported by Vercel
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  const HOST = process.env.HOST || '0.0.0.0';
+  app.listen(PORT, HOST, () => {
+    console.log(`Server is running on http://${HOST}:${PORT}`);
+  });
+}
+
 module.exports = app;
